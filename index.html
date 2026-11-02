@@ -620,24 +620,66 @@ $('hintMouse').innerHTML = MOUSE_SVG;
 
 /* ================= Малюнки мешканців ================= */
 // Усі у viewBox 64×64, нижній край — лінія води
-const fish = (c, d)=>`<g transform="translate(0 9)">
-    <path d="M47 33L61 21q-3 12 0 24z" fill="${c}" stroke="${d}" stroke-width="2.5" stroke-linejoin="round"/>
-    <path d="M22 22q9-13 22-1" fill="${c}" stroke="${d}" stroke-width="2.5" stroke-linejoin="round"/>
+// Рибка: c — тіло, d — обведення, tail — хвіст і плавці, extra — візерунок поверх тіла, scales — лусочки
+const fish = (c, d, { tail = c, extra = '', scales = true } = {})=>`<g transform="translate(0 9)">
+    <path d="M47 33L61 21q-3 12 0 24z" fill="${tail}" stroke="${d}" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M22 22q9-13 22-1" fill="${tail}" stroke="${d}" stroke-width="2.5" stroke-linejoin="round"/>
     <ellipse cx="29" cy="35" rx="22" ry="15" fill="${c}" stroke="${d}" stroke-width="2.5"/>
     <path d="M23 24q6 11 0 22" fill="none" stroke="${d}" stroke-width="2" stroke-linecap="round"/>
-    <path d="M33 29q3 3 0 6M40 27q3 3 0 6M39 37q3 3 0 6" fill="none" stroke="${d}" stroke-width="1.8" stroke-linecap="round" opacity=".6"/>
-    <path d="M31 40l-3 8 9-4" fill="${c}" stroke="${d}" stroke-width="2" stroke-linejoin="round"/>
+    ${scales ? `<path d="M33 29q3 3 0 6M40 27q3 3 0 6M39 37q3 3 0 6" fill="none" stroke="${d}" stroke-width="1.8" stroke-linecap="round" opacity=".6"/>` : ''}${extra}
+    <path d="M31 40l-3 8 9-4" fill="${tail}" stroke="${d}" stroke-width="2" stroke-linejoin="round"/>
     <circle cx="15" cy="31" r="5" fill="#fff" stroke="#1B1B3A" stroke-width="1.5"/><circle cx="14" cy="31.5" r="2.6" fill="#1B1B3A"/>
     <path d="M9 38q3.5 2.5 7 0" fill="none" stroke="#1B1B3A" stroke-width="2" stroke-linecap="round"/></g>`;
-const DRAW = {
-  frog:`<circle cx="19" cy="22" r="10" fill="#6CC24A" stroke="#2F7D32" stroke-width="2.5"/><circle cx="45" cy="22" r="10" fill="#6CC24A" stroke="#2F7D32" stroke-width="2.5"/>
-    <ellipse cx="32" cy="41" rx="27" ry="18" fill="#6CC24A" stroke="#2F7D32" stroke-width="2.5"/>
-    <ellipse cx="32" cy="50" rx="15" ry="7" fill="#B5E59A"/>
-    <circle cx="19" cy="22" r="6.5" fill="#fff" stroke="#1B1B3A" stroke-width="1.5"/><circle cx="20" cy="23" r="3.2" fill="#1B1B3A"/>
-    <circle cx="45" cy="22" r="6.5" fill="#fff" stroke="#1B1B3A" stroke-width="1.5"/><circle cx="44" cy="23" r="3.2" fill="#1B1B3A"/>
+// Риба-їжак: кругла, з колючками довкола
+const puffer = (c, d)=>`
+    <path d="${[...Array(12).keys()].filter(i=>i).map(i=>{
+      const a = i * Math.PI / 6, p = (r, da)=>`${(30 + r * Math.cos(a + da)).toFixed(1)} ${(40 + r * Math.sin(a + da)).toFixed(1)}`;
+      return `M${p(16, -.14)}L${p(23.5, 0)}L${p(16, .14)}z`;
+    }).join('')}" fill="${d}"/>
+    <path d="M47 40l12-8v16z" fill="${c}" stroke="${d}" stroke-width="2.2" stroke-linejoin="round"/>
+    <circle cx="30" cy="40" r="17.5" fill="${c}" stroke="${d}" stroke-width="2.5"/>
+    <ellipse cx="30" cy="49" rx="11" ry="6" fill="#FFF1D6" opacity=".8"/>
+    <circle cx="36" cy="31" r="2" fill="${d}" opacity=".5"/><circle cx="42" cy="38" r="1.8" fill="${d}" opacity=".5"/><circle cx="33" cy="25" r="1.5" fill="${d}" opacity=".5"/>
+    <circle cx="22" cy="35" r="5.5" fill="#fff" stroke="#1B1B3A" stroke-width="1.5"/><circle cx="21" cy="35.5" r="2.8" fill="#1B1B3A"/>
+    <ellipse cx="14.5" cy="43" rx="2.6" ry="2.2" fill="#1B1B3A"/>
+    <path d="M33 42q7 1 5 8" fill="none" stroke="${d}" stroke-width="2" stroke-linecap="round"/>`;
+// Жабка: b — тіло, d — обведення, belly — черевце, iris — колір очей (без нього очі білі),
+// slit — зіниця-щілинка: 'v' вертикальна, 'h' горизонтальна; extra — плями, смуги чи бородавки; cheeks — рум'янець
+const frog = ({ b, d, belly, iris = '#fff', slit = '', extra = '', cheeks = true })=>`
+    <circle cx="19" cy="22" r="10" fill="${b}" stroke="${d}" stroke-width="2.5"/><circle cx="45" cy="22" r="10" fill="${b}" stroke="${d}" stroke-width="2.5"/>
+    <ellipse cx="32" cy="41" rx="27" ry="18" fill="${b}" stroke="${d}" stroke-width="2.5"/>
+    <ellipse cx="32" cy="50" rx="15" ry="7" fill="${belly}"/>${extra}
+    ${[19, 45].map((x, i)=>`<circle cx="${x}" cy="22" r="6.5" fill="${iris}" stroke="#1B1B3A" stroke-width="1.5"/>` + (
+      slit === 'v' ? `<ellipse cx="${x}" cy="22" rx="1.6" ry="4.6" fill="#1B1B3A"/>`
+      : slit === 'h' ? `<ellipse cx="${x}" cy="22.5" rx="4.4" ry="1.7" fill="#1B1B3A"/>`
+      : `<circle cx="${x + (i ? -1 : 1)}" cy="23" r="3.2" fill="#1B1B3A"/>`)).join('')}
     <path d="M19 37q13 9 26 0" fill="none" stroke="#1B1B3A" stroke-width="2.5" stroke-linecap="round"/>
-    <ellipse cx="12" cy="38" rx="3.5" ry="2.2" fill="#FF8FB1" opacity=".8"/><ellipse cx="52" cy="38" rx="3.5" ry="2.2" fill="#FF8FB1" opacity=".8"/>`,
-  fish:fish('#FF9F43', '#C9661A'),
+    ${cheeks ? '<ellipse cx="12" cy="38" rx="3.5" ry="2.2" fill="#FF8FB1" opacity=".8"/><ellipse cx="52" cy="38" rx="3.5" ry="2.2" fill="#FF8FB1" opacity=".8"/>' : ''}`;
+const dots = (list, fill, opacity = 1)=>list.map(([x, y, r])=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" opacity="${opacity}"/>`).join('');
+// Жабки й рибки бувають різні: кожна нова в озері — випадкова з цього списку. Бали однакові
+const DRAW = {
+  frog:[
+    frog({ b:'#6CC24A', d:'#2F7D32', belly:'#B5E59A' }),                                                       // зелена
+    frog({ b:'#46C96A', d:'#1E8A44', belly:'#FFE27A', iris:'#E8453C', slit:'v',                               // червоноока деревна
+      extra:'<path d="M8 45q6 7 14 9M56 45q-6 7-14 9" fill="none" stroke="#2D9CDB" stroke-width="3" stroke-linecap="round"/>' }),
+    frog({ b:'#B08850', d:'#6F5128', belly:'#E8D2A6', iris:'#E0A800', slit:'h', cheeks:false,                 // ропуха з бородавками
+      extra:dots([[13, 34, 2.2], [24, 29, 1.8], [40, 29, 2], [51, 34, 2.2], [9, 44, 1.8], [55, 44, 1.8], [31, 31, 1.5]], '#6F5128', .5) }),
+    frog({ b:'#2D9CDB', d:'#1B5E9A', belly:'#9AD8F7',                                                          // блакитна в цятку
+      extra:dots([[14, 33, 3], [27, 28, 2.4], [44, 30, 3], [52, 41, 2.3], [10, 44, 2], [37, 27, 1.6]], '#1B1B3A') }),
+    frog({ b:'#FFC93C', d:'#B5860F', belly:'#FFEFB3', cheeks:false,                                            // жовта смугаста
+      extra:'<path d="M9 34q6-3 11-10M55 34q-6-3-11-10M25 28q7 3 14 0M7 44q3 4 7 6M57 44q-3 4-7 6" fill="none" stroke="#1B1B3A" stroke-width="3.2" stroke-linecap="round"/>' }),
+  ],
+  fish:[
+    fish('#FF9F43', '#C9661A'),                                                                                // помаранчева
+    fish('#2D9CDB', '#1B5E9A', { tail:'#FFC93C' }),                                                            // синя з жовтим хвостом
+    fish('#FF7A1A', '#B5480C', { scales:false,                                                                 // рибка-клоун
+      extra:'<ellipse cx="22" cy="35" rx="3.5" ry="13" fill="#fff" stroke="#1B1B3A" stroke-width="1.5"/><ellipse cx="38" cy="35" rx="3.5" ry="12.3" fill="#fff" stroke="#1B1B3A" stroke-width="1.5"/>' }),
+    fish('#3DBE6B', '#23914A', { scales:false, extra:dots([[30, 28, 2.4], [37, 33, 2], [31, 40, 2.6], [42, 41, 1.8], [44, 30, 1.6]], '#C9F5D8') }),   // зелена в цятку
+    fish('#FF6FAE', '#C93C7E', { tail:'#A66CFF' }),                                                            // рожева з фіолетовим хвостом
+    fish('#8E8AA8', '#5A5676', { scales:false,                                                                 // сом з вусами
+      extra:dots([[33, 29, 1.8], [40, 34, 2], [35, 41, 1.6]], '#5A5676', .5) + '<path d="M10 38q-6 2-9 8M12 40q-3 5-4 11" fill="none" stroke="#5A5676" stroke-width="1.8" stroke-linecap="round"/>' }),
+    puffer('#F2A65A', '#9A5A1E'),                                                                              // риба-їжак
+  ],
   cray:`<path d="M28 28Q20 14 11 5M36 28Q44 14 53 5" fill="none" stroke="#9A4424" stroke-width="2" stroke-linecap="round"/>
     <path d="M22 40L14 29M42 40l8-11" stroke="#9A4424" stroke-width="5" stroke-linecap="round"/>
     <path d="M14 31C6 29 3 18 9 11l5 8 4-8c6 5 5 18-4 20z" fill="#D9734A" stroke="#9A4424" stroke-width="2.2" stroke-linejoin="round"/>
@@ -691,7 +733,8 @@ const DRAW = {
     <circle cx="51.5" cy="15" r="1.3" fill="#2A8A5C"/>
     <path d="M43 21q5 2.5 9-1" fill="none" stroke="#1B1B3A" stroke-width="2" stroke-linecap="round"/>`,
 };
-const critSVG = id=>`<svg viewBox="0 0 64 64" aria-hidden="true">${DRAW[id]}</svg>`;
+// v — різновид жабки чи рибки; без нього — перший (для іконок і списку мешканців)
+const critSVG = (id, v = 0)=>`<svg viewBox="0 0 64 64" aria-hidden="true">${[].concat(DRAW[id])[v]}</svg>`;
 
 /* ================= Озеро: водойми й мешканці ================= */
 // Бали з усіх ігор складаються в скарбничку (store.total). За неї відкриваються нові водойми й нові мешканці:
@@ -980,7 +1023,8 @@ function spawn(){
   const type = pickType();
   const el = document.createElement('div');
   el.className = 'critter warn' + (type.rare ? ' rare' : '');
-  el.innerHTML = `<div class="cr-wave"></div><div class="cr-body">${critSVG(type.id)}</div><div class="cr-arm"></div>`;
+  const v = Math.floor(Math.random() * [].concat(DRAW[type.id]).length);   // який різновид
+  el.innerHTML = `<div class="cr-wave"></div><div class="cr-body">${critSVG(type.id, v)}</div><div class="cr-arm"></div>`;
   const c = { type, rare:!!type.rare, fx:p.x / W, fy:p.y / H, el, state:'warn', upAt:G.t + WARN, armed:false };
   const L = G.L, up = L.up[0] + (L.up[1] - L.up[0]) * (G.t / L.time);   // гра поступово пришвидшується
   c.upUntil = c.upAt + RISE + up;
