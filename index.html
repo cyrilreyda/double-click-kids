@@ -237,6 +237,12 @@
   .sticker.no .st-ico{background:var(--bg); border:2px dashed var(--line); box-shadow:none;}
   .sticker.no .st-ico span{filter:grayscale(1); opacity:.3;}
   .sticker.new .st-ico{animation:beat .6s ease 2;}
+  /* Наліпка, яку збирають кілька ігор: знизу вгору заповнюється кольором на стільки, скільки вже зібрано */
+  .sticker .st-ico{position:relative; overflow:hidden;}
+  .st-part{position:absolute; left:0; right:0; bottom:0; height:var(--fill); overflow:hidden; background:#FFE08A; border-top:2px solid #E0A800;}
+  .st-part span{position:absolute; left:0; right:0; bottom:0; height:48px; display:flex; align-items:center; justify-content:center;}
+  .sticker.no .st-ico .st-part, .sticker.no .st-ico .st-part span{filter:none; opacity:1;}
+  .sticker small{font-size:11.5px; font-weight:700; color:#8A6200;}
 
   /* ---------- Гравці ---------- */
   .player-btn{margin-left:auto; display:inline-flex; align-items:center; gap:6px; max-width:200px; overflow:hidden;}
@@ -510,10 +516,12 @@ const STICKERS = [
   { id:'gold',   ico:'👑', name:'Три бажання',      how:'Спіймати 2 золоті рибки за гру',                                test:r=>r.got.gold >= 2 },
   { id:'dino',   ico:'🦕', name:'Хто в озері?!',    how:'Спіймати динозавра',                                            test:r=>r.got.dino >= 1 },
   { id:'hard',   ico:'🔴', name:'Майстер клацання', how:'Отримати 2 зірки чи більше на рівні «Важко»',                   test:r=>r.level === 'hard' && r.stars >= 2 },
-  { id:'clean',  ico:'♻️', name:'Чиста водойма',    how:'Перетягнути з води в кошик 20 речей',                           test:(r, p)=>p.junk >= 20 },
-  { id:'games',  ico:'🏆', name:'Завсідник озера',  how:'Зіграти 25 ігор',                                               test:(r, p)=>p.games >= 25 },
-  { id:'bank',   ico:'💰', name:'Повна скарбничка', how:'Зібрати в скарбничку 300 балів',                                test:(r, p)=>p.total >= 300 },
+  { id:'clean',  ico:'♻️', name:'Чиста водойма',    how:'Перетягнути з води в кошик 20 речей',                           test:(r, p)=>p.junk >= 20,   count:p=>p.junk, need:20 },
+  { id:'games',  ico:'🏆', name:'Завсідник озера',  how:'Зіграти 25 ігор',                                               test:(r, p)=>p.games >= 25,  count:p=>p.games, need:25 },
+  { id:'bank',   ico:'💰', name:'Повна скарбничка', how:'Зібрати в скарбничку 300 балів',                                test:(r, p)=>p.total >= 300, count:p=>p.total, need:300 },
 ];
+// Наліпки з count збирають за кілька ігор: скільки вже є з need (лише для ще не отриманих)
+const stickerProgress = st=>st.count && !store.stickers[st.id] ? Math.min(st.count(store) || 0, st.need) : 0;
 const STORE_KEY = BOOST ? 'double-click-kids-boost-v1' : 'double-click-kids-v1';
 
 /* ================= Збереження ================= */
@@ -854,11 +862,18 @@ function renderSetup(){
   $('stickers').innerHTML = STICKERS.map(stickerHTML).join('');
 }
 // Наліпка: отримана — кольорова, ще ні — сіра; при наведенні видно, за що її дають
-const stickerHTML = st=>`<span class="sticker${store.stickers[st.id] ? '' : ' no'}" data-st="${st.id}" title="${st.how}"><span class="st-ico"><span>${st.ico}</span></span>${st.name}</span>`;
+// Та, що збирається за кілька ігор, частково заповнена кольором, а під назвою — скільки вже зібрано
+const stickerHTML = st=>{
+  const n = stickerProgress(st);
+  const part = n ? `<span class="st-part" style="--fill:${Math.round(n / st.need * 100)}%"><span>${st.ico}</span></span>` : '';
+  return `<span class="sticker${store.stickers[st.id] ? '' : ' no'}" data-st="${st.id}" title="${st.how}${n ? ` — уже ${n} з ${st.need}` : ''}">` +
+    `<span class="st-ico"><span>${st.ico}</span>${part}</span>${st.name}${n ? `<small>${n} з ${st.need}</small>` : ''}</span>`;
+};
 // Клацання по наліпці підказує, за що її дають (на планшеті підказки при наведенні немає)
 $('stickers').addEventListener('click', e=>{
   const st = STICKERS.find(st=>st.id === e.target.closest('[data-st]')?.dataset.st);
-  if(st) showToast(`${st.ico} ${st.how}`);
+  const n = st && stickerProgress(st);
+  if(st) showToast(`${st.ico} ${st.how}${n ? ` — уже ${n} з ${st.need}` : ''}`);
 });
 
 // Що відкриється наступним: «водойма 🏞️ Річка» або «в озері з'явиться рак»
