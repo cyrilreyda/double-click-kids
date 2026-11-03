@@ -126,6 +126,26 @@
   .critter.caught .cr-body{visibility:visible; animation:caught .45s ease-out both;}
   .critter.caught .cr-wave{opacity:0;}
   @keyframes caught{35%{transform:translateY(-30%) scale(1.15) rotate(-10deg);} to{transform:translateY(-45%) scale(.3) rotate(20deg); opacity:0;}}
+  /* Сміття гойдається на воді. Узяте — піднімається над водою й іде за мишкою; донесене — зменшується в кошику */
+  .critter.junk.up .cr-body svg{animation:bob 1.4s ease-in-out infinite alternate;}
+  @keyframes bob{from{transform:rotate(-5deg);} to{transform:rotate(5deg) translateY(-4%);}}
+  .critter.held, .critter.binned{z-index:3;}
+  .critter.held .cr-body svg{animation:none; transform:scale(1.12) translateY(-8%); filter:drop-shadow(0 10px 6px rgba(0,0,0,.3));}
+  .critter.held .cr-wave, .critter.binned .cr-wave{opacity:0;}
+  .critter.binned{transition:left .2s ease, top .2s ease;}
+  .critter.binned .cr-body{visibility:visible; animation:into .4s ease-in both;}
+  @keyframes into{40%{transform:translateY(-25%) scale(.8);} to{transform:translateY(10%) scale(.25); opacity:0;}}
+  .lake.grab{cursor:grab;}
+  .lake.grabbing, .lake.grabbing *{cursor:grabbing;}
+  /* Берег у нижньому правому куті з кошиком для сміття. Розміри --bin і --patch задає гра */
+  .beach{position:absolute; right:0; bottom:0; z-index:2; width:var(--patch); height:var(--patch); border-top-left-radius:100%; pointer-events:none;
+    background:var(--shore, #7ED6A2); box-shadow:inset 5px 5px 0 rgba(255,255,255,.35);}
+  .bin{position:absolute; z-index:2; width:var(--bin); height:var(--bin); pointer-events:none; overflow:visible;
+    right:calc(var(--patch) * .42 - var(--bin) / 2); bottom:calc(var(--patch) * .42 - var(--bin) / 2);}
+  .bin .lid{transition:transform .15s ease; transform-box:fill-box; transform-origin:0 100%;}
+  .bin.ready .lid{transform:rotate(-28deg);}
+  .bin.ready{filter:drop-shadow(0 0 8px #FFF3B0);}
+  .bin.got{animation:beat .35s ease;}
   /* Клацання по воді — бризки */
   .splash{position:absolute; width:34px; height:14px; margin:-7px 0 0 -17px; border-radius:50%; border:3px solid rgba(255,255,255,.85); pointer-events:none; animation:splash .5s ease-out forwards;}
   @keyframes splash{from{transform:scale(.3); opacity:1;} to{transform:scale(1.6); opacity:0;}}
@@ -316,6 +336,14 @@
     <div class="play">
       <div class="field" id="field">
         <div class="lake" id="lake">
+          <div class="beach" aria-hidden="true"></div>
+          <svg class="bin" id="bin" viewBox="0 0 64 64" aria-hidden="true">
+            <path d="M14 24h36l-4 33q-.5 4-4.5 4h-19q-4 0-4.5-4z" fill="#3DBE6B" stroke="#1E8A44" stroke-width="2.5" stroke-linejoin="round"/>
+            <path d="M24 31l1 23M32 31v23M40 31l-1 23" stroke="#1E8A44" stroke-width="2.5" stroke-linecap="round" opacity=".5"/>
+            <path d="M19 28v26" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".45"/>
+            <g class="lid"><rect x="10" y="16" width="44" height="8" rx="3" fill="#46C96A" stroke="#1E8A44" stroke-width="2.5"/>
+              <path d="M26 16v-3q0-2 2-2h8q2 0 2 2v3" fill="none" stroke="#1E8A44" stroke-width="2.5"/></g>
+          </svg>
           <div class="over" id="countOver" hidden>
             <div class="count" id="countNum">3</div>
             <div class="over-card"><span class="l">Двічі клацни лівою кнопкою</span><br>по мешканцю, поки він не пірнув</div>
@@ -408,15 +436,16 @@ const BOOST = new URLSearchParams(location.search).has('boost');
 // time — тривалість гри, с; dbl — за скільки мс треба клацнути вдруге, щоб вийшло подвійне клацання;
 // size — розмір мешканця: частка меншої сторони озера, але не менше min і не більше max пікселів;
 // up — скільки секунд мешканець над водою (на початку й наприкінці гри: гра поступово пришвидшується);
-// every — пауза між появами, с; max — скільки мешканців водночас над водою
+// every — пауза між появами, с; max — скільки мешканців водночас над водою;
+// bin — розмір кошика для сміття, у розмірах мешканця; far — сміття випливає не ближче до кошика, ніж така частка діагоналі озера
 const LEVELS = BOOST ? {
-  easy:  { name:'Легко',    ico:'🟢', info:'середні мешканці', time:30,  dbl:550, size:[.21, 56, 84], up:[2.8, 2.3], every:1.2,  max:3 },
-  mid:   { name:'Середньо', ico:'🟡', info:'маленькі',         time:30,  dbl:430, size:[.17, 46, 66], up:[2.2, 1.8], every:.95,  max:3 },
-  hard:  { name:'Важко',    ico:'🔴', info:'крихітні й спритні', time:30,  dbl:350, size:[.14, 40, 54], up:[1.8, 1.45], every:.75, max:4 },
+  easy:  { name:'Легко',    ico:'🟢', info:'середні мешканці', time:30,  dbl:550, size:[.21, 56, 84], up:[2.8, 2.3], every:1.2,  max:3, bin:1.15, far:.3 },
+  mid:   { name:'Середньо', ico:'🟡', info:'маленькі',         time:30,  dbl:430, size:[.17, 46, 66], up:[2.2, 1.8], every:.95,  max:3, bin:1.05, far:.45 },
+  hard:  { name:'Важко',    ico:'🔴', info:'крихітні й спритні', time:30,  dbl:350, size:[.14, 40, 54], up:[1.8, 1.45], every:.75, max:4, bin:.95, far:.55 },
 } : {
-  easy:  { name:'Легко',    ico:'🟢', info:'великі мешканці',  time:30,  dbl:700, size:[.26, 72, 108], up:[3.8, 3.2], every:1.6,  max:2 },
-  mid:   { name:'Середньо', ico:'🟡', info:'середні',          time:30,  dbl:500, size:[.21, 58, 86],  up:[3.0, 2.5], every:1.3,  max:3 },
-  hard:  { name:'Важко',    ico:'🔴', info:'маленькі й спритні', time:30,  dbl:380, size:[.17, 48, 68],  up:[2.4, 1.9], every:1.0,  max:3 },
+  easy:  { name:'Легко',    ico:'🟢', info:'великі мешканці',  time:30,  dbl:700, size:[.26, 72, 108], up:[3.8, 3.2], every:1.6,  max:2, bin:1.15, far:0 },
+  mid:   { name:'Середньо', ico:'🟡', info:'середні',          time:30,  dbl:500, size:[.21, 58, 86],  up:[3.0, 2.5], every:1.3,  max:3, bin:1.05, far:.35 },
+  hard:  { name:'Важко',    ico:'🔴', info:'маленькі й спритні', time:30,  dbl:380, size:[.17, 48, 68],  up:[2.4, 1.9], every:1.0,  max:3, bin:.95, far:.5 },
 };
 const WARN = .4;        // скільки секунд перед появою по воді розходяться кола
 const RISE = .25;       // виринає
@@ -438,15 +467,22 @@ const CRITTERS = [
   { id:'gold',   name:'Золота рибка', pts:5,  w:.35, at:38, rare:true },
   { id:'dino',   name:'Динозавр',     pts:10, w:.2,  at:50, rare:true },
 ];
-// Несподіванки: зрідка замість мешканця виринає річ, якій у воді не місце. Ловиться так само й дає бали,
-// але в списку мешканців її не видно — це сюрприз. SURPRISE — імовірність, що наступною виринає несподіванка
+// Несподіванка: зрідка замість мешканця виринає перископ підводного човна. Ловиться так само й дає бали,
+// але в списку мешканців його не видно — це сюрприз. SURPRISE — імовірність, що наступним виринає перископ
 const SURPRISES = [
-  { id:'can',   name:'Банка',    pts:2, surprise:true },
-  { id:'boot',  name:'Чобіт',    pts:2, surprise:true },
-  { id:'tire',  name:'Шина',     pts:3, surprise:true },
   { id:'scope', name:'Перископ', pts:5, surprise:true },
 ];
-const SURPRISE = .07;
+const SURPRISE = .05;
+// Сміття: його не ловлять, а перетягують у кошик на березі. Не пірнає — плаває, доки не приберуть.
+// У воді водночас не більше одного предмета; наступний випливає через JUNK_GAP с після того, як попередній у кошику.
+// У списку мешканців сміття теж не видно
+const JUNK = [
+  { id:'can',  name:'Банка', pts:3, junk:true },
+  { id:'boot', name:'Чобіт', pts:3, junk:true },
+  { id:'tire', name:'Шина',  pts:4, junk:true },
+];
+const JUNK_GAP = [2, 4];
+const JUNK_LAST = 5;    // за стільки секунд до кінця гри нове сміття вже не випливає — не встигнути донести
 // Водойми: water і deep — вода згори й у глибині, shore — берег
 const PLACES = [
   { id:'pond',   name:'Ставок',       ico:'💧', at:0,   water:'#5CCBEB', deep:'#2D8FD0',
@@ -474,7 +510,7 @@ const STICKERS = [
   { id:'gold',   ico:'👑', name:'Три бажання',      how:'Спіймати 2 золоті рибки за гру',                                test:r=>r.got.gold >= 2 },
   { id:'dino',   ico:'🦕', name:'Хто в озері?!',    how:'Спіймати динозавра',                                            test:r=>r.got.dino >= 1 },
   { id:'hard',   ico:'🔴', name:'Майстер клацання', how:'Отримати 2 зірки чи більше на рівні «Важко»',                   test:r=>r.level === 'hard' && r.stars >= 2 },
-  { id:'clean',  ico:'♻️', name:'Чиста водойма',    how:'Виловити з води 10 несподіваних речей',                         test:(r, p)=>p.junk >= 10 },
+  { id:'clean',  ico:'♻️', name:'Чиста водойма',    how:'Перетягнути з води в кошик 20 речей',                           test:(r, p)=>p.junk >= 20 },
   { id:'games',  ico:'🏆', name:'Завсідник озера',  how:'Зіграти 25 ігор',                                               test:(r, p)=>p.games >= 25 },
   { id:'bank',   ico:'💰', name:'Повна скарбничка', how:'Зібрати в скарбничку 300 балів',                                test:(r, p)=>p.total >= 300 },
 ];
@@ -482,7 +518,7 @@ const STORE_KEY = BOOST ? 'double-click-kids-boost-v1' : 'double-click-kids-v1';
 
 /* ================= Збереження ================= */
 // Гравці на цьому пристрої: { current, players:{ ім'я: профіль } }. У кожного свої рекорди, скарбничка, водойма й наліпки.
-// Профіль: best — рекорди рівнів; total — скарбничка балів; games — зіграно ігор; junk — виловлено несподіванок за всі ігри;
+// Профіль: best — рекорди рівнів; total — скарбничка балів; games — зіграно ігор; junk — сміття в кошику за всі ігри;
 // stickers — наліпки; place — обрана водойма
 const newProfile = ()=>({ best:{}, total:0, games:0, junk:0, stickers:{} });
 let db = { current:null, players:{} };
@@ -580,7 +616,9 @@ const SFX = {
   dive:   ()=>bloop(420, 160, .18, .045),
   appear: ()=>sparkle(),                                                        // рідкісний мешканець виринув
   surprise: ()=>{ bloop(260, 620, .16, .05); bloop(320, 760, .16, .04, .14); },  // виринула несподіванка
-  junk:   ()=>{ noise(.18, .25, 0, 1400); tone(1180, .05, 'square', .035, .02); tone(780, .09, 'square', .03, .08); },
+  junk:   ()=>{ noise(.18, .25, 0, 1400); tone(1180, .05, 'square', .035, .02); tone(780, .09, 'square', .03, .08); },   // сміття в кошику
+  grab:   ()=>tone(520, .06, 'triangle', .05),                                  // узяв сміття
+  drop:   ()=>{ noise(.2, .14, 0, 1500); bloop(380, 150, .2, .04); },          // упустив повз кошик
   beep:   ()=>tone(440, .15, 'square', .05),
   go:     ()=>tone(880, .35, 'square', .05),
 };
@@ -946,6 +984,7 @@ const lake = $('lake');
 let G = null;           // поточна гра
 let lastLevel = 'easy';
 let W = 0, H = 0, SZ = 0;   // розміри озера й мешканця в пікселях, перераховуються при зміні вікна
+let BIN = 0, PATCH = 0;     // розмір кошика й радіус берега з кошиком у нижньому правому куті
 const R_CORNER = 64;    // заокруглення кутів озера, як у CSS .lake
 
 function measure(){
@@ -953,7 +992,11 @@ function measure(){
   W = lake.clientWidth; H = lake.clientHeight;
   const [k, min, max] = G.L.size;
   SZ = Math.round(Math.max(min, Math.min(max, Math.min(W, H) * k)));
+  BIN = Math.round(SZ * G.L.bin);
+  PATCH = Math.round(BIN * 1.8);
   lake.style.setProperty('--sz', SZ + 'px');
+  lake.style.setProperty('--bin', BIN + 'px');
+  lake.style.setProperty('--patch', PATCH + 'px');
 }
 window.addEventListener('resize', measure);
 
@@ -962,9 +1005,14 @@ function start(levelId){
   lastLevel = levelId;
   const L = LEVELS[levelId];
   G = { id:levelId, L, score:0, crits:[], recent:[], t:0, spawn:.5, seen:0, caught:0, singles:0, water:0, dived:0,
-        streak:0, streakMax:0, singleRun:0, hints:0, gaps:[], junk:0, got:Object.fromEntries([...CRITTERS, ...SURPRISES].map(c=>[c.id, 0])),
+        streak:0, streakMax:0, singleRun:0, hints:0, gaps:[], got:Object.fromEntries([...CRITTERS, ...SURPRISES, ...JUNK].map(c=>[c.id, 0])),
+        // сміття: junkAt — коли випливе наступне; junkSeen — скільки випливло; binned — у кошику; drops — упущено повз кошик;
+        // carries — скільки тривало кожне вдале перенесення, мс; drag — що зараз тягнуть
+        junkAt:1.5 + Math.random() * 2, junkSeen:0, binned:0, drops:0, carries:[], drag:null, junkHinted:false, tugAt:0,
         open:CRITTERS.filter(c=>isOpen(c)), phase:'count', paused:false, raf:0, last:0, timers:[] };
   lake.querySelectorAll('.critter, .pop, .splash').forEach(n=>n.remove());
+  lake.classList.remove('grab', 'grabbing');
+  $('bin').classList.remove('ready');
   lake.style.setProperty('--dbl', L.dbl + 'ms');
   $('hintOver').hidden = true;
   $('pauseOver').hidden = true;
@@ -1015,7 +1063,10 @@ function step(dt, now){
 
   // Нові мешканці: не частіше ніж раз на L.every с і не більше L.max водночас
   G.spawn -= dt;
-  if(G.spawn <= 0 && G.crits.filter(c=>c.state !== 'caught').length < L.max && spawn()) G.spawn = L.every;
+  if(G.spawn <= 0 && G.crits.filter(c=>c.state !== 'caught' && !c.type.junk).length < L.max && spawn()) G.spawn = L.every;
+  // Сміття: по одному предмету, наступний — через JUNK_GAP с після того, як попередній у кошику
+  if(G.t >= G.junkAt && left > JUNK_LAST && !G.crits.some(c=>c.type.junk && c.state !== 'caught')
+     && spawn(JUNK[Math.floor(Math.random() * JUNK.length)])) G.junkSeen++;
 
   for(const c of G.crits){
     // Перше клацання було, а другого не дочекались — одне клацання замість двох
@@ -1024,7 +1075,9 @@ function step(dt, now){
       c.state = 'up';
       c.el.classList.remove('warn'); c.el.classList.add('up');
       if(c.rare) SFX.appear();
-      else if(c.type.surprise) SFX.surprise();
+      else if(c.type.surprise || c.type.junk) SFX.surprise();
+      // Перше сміття за гру — підказуємо, що з ним робити
+      if(c.type.junk && !G.junkHinted){ G.junkHinted = true; popText('Тягни в кошик!', c, 'hint-pop'); }
     }
     // Над водою вже досить — пірнає. Якщо учень щойно клацнув раз, чекаємо на друге клацання
     if(c.state === 'up' && G.t >= c.upUntil && !c.armed){ c.state = 'dive'; c.diveEnd = G.t + DIVE; c.el.classList.add('dive'); }
@@ -1045,44 +1098,52 @@ function pickType(){
   for(const c of G.open){ r -= c.w; if(r < 0) return c; }
   return G.open[0];
 }
-// Нове місце: цілком у воді, не в заокругленому куті й не ближче ніж 1,35 розміру до інших мешканців — вони ніколи не накладаються
-function freeSpot(){
+// Нове місце: цілком у воді, не в заокругленому куті, не на березі з кошиком і не ближче ніж 1,35 розміру до інших мешканців —
+// вони ніколи не накладаються. far — не ближче до кошика, ніж така частка діагоналі озера (для сміття)
+function freeSpot(far = 0){
   const m = SZ * .62, minD = SZ * 1.35;
   for(let tries = 0; tries < 40; tries++){
     const x = m + Math.random() * (W - 2 * m), y = m + Math.random() * (H - 2 * m);
     const cx = Math.min(Math.max(x, R_CORNER), W - R_CORNER), cy = Math.min(Math.max(y, R_CORNER), H - R_CORNER);
     const d = Math.hypot(x - cx, y - cy);   // > 0 лише в куті
     if(d > 0 && d > R_CORNER - SZ * .55) continue;
+    if(Math.hypot(W - x, H - y) < Math.max(PATCH + SZ * .55, far * Math.hypot(W, H))) continue;
     if(G.crits.some(c=>Math.hypot(x - c.fx * W, y - c.fy * H) < minD)) continue;
     return { x, y };
   }
   return null;   // місця немає — спробуємо в наступному кадрі
 }
-function spawn(){
-  const p = freeSpot();
+// Хто випливе: type задано лише для сміття, інакше — pickType()
+function spawn(type){
+  const p = freeSpot(type ? G.L.far : 0);
   if(!p) return false;
-  const type = pickType();
+  type = type || pickType();
   const el = document.createElement('div');
-  el.className = 'critter warn' + (type.rare ? ' rare' : '');
+  el.className = 'critter warn' + (type.rare ? ' rare' : '') + (type.junk ? ' junk' : '');
   const v = Math.floor(Math.random() * [].concat(DRAW[type.id]).length);   // який різновид
   el.innerHTML = `<div class="cr-wave"></div><div class="cr-body">${critSVG(type.id, v)}</div><div class="cr-arm"></div>`;
   const c = { type, rare:!!type.rare, fx:p.x / W, fy:p.y / H, el, state:'warn', upAt:G.t + WARN, armed:false };
   const L = G.L, up = L.up[0] + (L.up[1] - L.up[0]) * (G.t / L.time);   // гра поступово пришвидшується
-  c.upUntil = c.upAt + RISE + up;
-  el.style.left = c.fx * 100 + '%';
-  el.style.top = c.fy * 100 + '%';
+  c.upUntil = type.junk ? Infinity : c.upAt + RISE + up;   // сміття не пірнає
+  place(c);
   lake.insertBefore(el, $('countOver'));
   G.crits.push(c);
   return true;
 }
+function place(c){
+  c.el.style.left = c.fx * 100 + '%';
+  c.el.style.top = c.fy * 100 + '%';
+}
 
-// Натискання лівою кнопкою (або дотик) у точці (x, y) озера
-function press(x, y, now){
+// Натискання лівою кнопкою (або дотик) у точці (x, y) озера; id — який вказівник натиснув
+function press(x, y, now, id){
+  const hit = hitTest(x, y);
+  // Сміття не ловлять подвійним клацанням, а беруть і тягнуть
+  if(hit && hit.type.junk){ grab(hit, x, y, now, id); return; }
   flashMouse();
   rhythm(now);
   const L = G.L;
   const a = G.crits.find(c=>c.armed);
-  const hit = hitTest(x, y);
   // Друге клацання вчасно: по тому самому мешканцю або майже там, де було перше
   if(a && now - a.armedAt <= L.dbl && (hit === a || Math.hypot(x - a.x, y - a.y) <= MOVE_TOL)){ catchIt(a, now - a.armedAt, now); return; }
   if(hit){
@@ -1094,6 +1155,8 @@ function press(x, y, now){
   if(G.recent.some(r=>now < r.until && Math.hypot(x - r.x, y - r.y) <= r.r)) return;
   // Кола на воді: мешканець ще не виринув — не рахуємо
   if(G.crits.some(c=>c.state === 'warn' && Math.hypot(x - c.fx * W, y - c.fy * H) <= SZ * HIT)) return;
+  // Берег з кошиком — не вода
+  if(inBin(x, y)) return;
   G.water++; G.streak = 0;
   splash(x, y);
   SFX.water();
@@ -1136,10 +1199,85 @@ function catchIt(c, gap, now){
   G.recent = G.recent.filter(r=>now < r.until);
   G.recent.push({ x:c.fx * W, y:c.fy * H, r:SZ * .75, until:now + G.L.dbl });
   bumpScore();
-  if(c.type.surprise) G.junk++;
   popText(c.type.surprise ? `${c.type.name}! +${c.type.pts}` : '+' + c.type.pts, c);
   if(G.streak % 10 === 0) popText(`🔥 ${G.streak} поспіль!`, c, 'streak', 26);
   (c.rare ? SFX.rare : c.type.surprise ? SFX.junk : SFX.catch)();
+}
+
+/* ----- Сміття: узяти, перетягнути й відпустити над берегом з кошиком ----- */
+// Відпустили над берегом з кошиком (поблажливо: увесь піщаний кут, а не лише сам кошик)
+const inBin = (x, y)=>Math.hypot(W - x, H - y) <= PATCH + 10;
+function grab(c, x, y, now, id){
+  c.state = 'held';
+  G.drag = { c, id, at:now, x0:x, y0:y, dx:x - c.fx * W, dy:y - c.fy * H, moved:false };
+  c.el.classList.add('held');
+  lake.classList.add('grabbing');
+  try{ lake.setPointerCapture(id); }catch(e){}   // рух і відпускання приходять, навіть якщо мишка вийшла за озеро
+  holdMouse(true);
+  SFX.grab();
+}
+function dragTo(x, y){
+  const d = G.drag;
+  if(!d.moved && Math.hypot(x - d.x0, y - d.y0) > 6) d.moved = true;
+  d.c.fx = Math.min(Math.max((x - d.dx) / W, 0), 1);
+  d.c.fy = Math.min(Math.max((y - d.dy) / H, 0), 1);
+  place(d.c);
+  $('bin').classList.toggle('ready', inBin(x, y));
+}
+// Відпустили. cancel — гру поставили на паузу посеред перенесення: предмет просто лишається у воді
+function release(x, y, now, cancel = false){
+  const { c, moved, at } = G.drag;
+  G.drag = null;
+  c.el.classList.remove('held');
+  lake.classList.remove('grabbing');
+  $('bin').classList.remove('ready');
+  holdMouse(false);
+  if(!cancel && moved && inBin(x, y)){ toBin(c, now - at); return; }
+  const p = keepInWater(c.fx * W, c.fy * H);
+  c.fx = p.x / W; c.fy = p.y / H;
+  place(c);
+  c.state = 'up';
+  if(cancel) return;
+  // Клацнули, не потягнувши (або двічі клацнули), — підказуємо, що сміття треба тягнути
+  if(!moved){
+    if(now - G.tugAt > 900){ G.tugAt = now; popText('Тягни в кошик!', c, 'hint-pop'); }
+    SFX.single();
+    return;
+  }
+  G.drops++;
+  splash(p.x, p.y + SZ * .4);
+  SFX.drop();
+}
+function toBin(c, carry){
+  c.state = 'caught'; c.removeAt = G.t + .45;
+  c.fx = (W - PATCH * .42) / W; c.fy = (H - PATCH * .42 - BIN * .2) / H;
+  c.el.classList.remove('up');
+  c.el.classList.add('binned');
+  place(c);
+  G.binned++; G.got[c.type.id]++;
+  G.score += c.type.pts;
+  G.carries.push(carry);
+  G.junkAt = G.t + JUNK_GAP[0] + Math.random() * (JUNK_GAP[1] - JUNK_GAP[0]);
+  bumpScore();
+  popText(`${c.type.name}! +${c.type.pts}`, c);
+  const b = $('bin');
+  b.classList.remove('got'); void b.getBoundingClientRect(); b.classList.add('got');
+  SFX.junk();
+}
+// Куди впаде упущене сміття: цілком у воді, не в заокругленому куті й не на березі з кошиком
+function keepInWater(x, y){
+  const m = SZ * .5, clamp = (v, max)=>Math.min(Math.max(v, m), max - m);
+  x = clamp(x, W); y = clamp(y, H);
+  const cx = Math.min(Math.max(x, R_CORNER), W - R_CORNER), cy = Math.min(Math.max(y, R_CORNER), H - R_CORNER);
+  const d = Math.hypot(x - cx, y - cy), r = Math.max(0, R_CORNER - SZ * .55);
+  if(d > r){ x = cx + (x - cx) * r / d; y = cy + (y - cy) * r / d; }
+  const db = Math.hypot(W - x, H - y), need = PATCH + SZ * .55;
+  if(db < need){
+    const k = db ? need / db : 0;
+    x = db ? W - (W - x) * k : W - need * .71;
+    y = db ? H - (H - y) * k : H - need * .71;
+  }
+  return { x:clamp(x, W), y:clamp(y, H) };
 }
 function splash(x, y){
   const s = document.createElement('div');
@@ -1152,9 +1290,10 @@ function popText(text, c, cls = '', below = 0){
   const p = document.createElement('div');
   p.className = 'pop ' + cls;
   p.textContent = text;
-  p.style.left = Math.min(Math.max(c.fx * W, 60), W - 60) + 'px';
   p.style.top = Math.max(4, c.fy * H - SZ * .5 - 26 + below) + 'px';
   lake.appendChild(p);
+  const half = Math.max(60, p.offsetWidth / 2 + 8);   // довгий напис не обрізається краєм озера
+  p.style.left = Math.min(Math.max(c.fx * W, half), W - half) + 'px';
   setTimeout(()=>p.remove(), 950);
 }
 function bumpScore(){
@@ -1179,6 +1318,12 @@ function flashMouse(){
   clearTimeout(b._t);
   b._t = setTimeout(()=>b.classList.remove('on'), 140);
 }
+// Поки тягнуть сміття, ліва кнопка на мишці збоку натиснута
+function holdMouse(on){
+  const b = $('sideMouse').querySelector('.bl');
+  clearTimeout(b._t);
+  b.classList.toggle('on', on);
+}
 // Кружечки збоку: перше натискання — бірюзовий, друге вчасно — обидва зелені
 let rhythmAt = 0, rhythmTimer = 0;
 function rhythm(now){
@@ -1194,8 +1339,9 @@ function pause(){
   if(!G || G.phase !== 'play' || G.paused) return;
   G.paused = true;
   cancelAnimationFrame(G.raf);
-  // Перше клацання перед паузою не рахуємо
+  // Перше клацання перед паузою не рахуємо; сміття, яке тягли, лишається у воді
   G.crits.forEach(c=>{ if(c.armed){ c.armed = false; c.el.classList.remove('armed'); } });
+  if(G.drag) release(0, 0, 0, true);
   $('pauseOver').hidden = false;
 }
 function resume(){
@@ -1208,6 +1354,7 @@ function resume(){
 
 function stopGame(){
   if(!G) return;
+  if(G.drag) release(0, 0, 0, true);
   cancelAnimationFrame(G.raf);
   G.timers.forEach(clearTimeout);
   G.phase = 'stopped';
@@ -1218,6 +1365,7 @@ function stopGame(){
 function finish(){
   G.phase = 'end';
   cancelAnimationFrame(G.raf);
+  if(G.drag) release(0, 0, 0, true);
   const g = G;
   const share = g.seen ? g.caught / g.seen : 0;
   const misses = g.singles + g.water;
@@ -1228,7 +1376,7 @@ function finish(){
   const before = store.total;
   store.total += g.score;
   store.games = (store.games || 0) + 1;
-  store.junk = (store.junk || 0) + g.junk;
+  store.junk = (store.junk || 0) + g.binned;
   const opened = allUnlocks().filter(u=>u.x.at > before && isOpen(u.x));
   const run = { stars, level:g.id, share, water:g.water, singles:g.singles, streakMax:g.streakMax, got:g.got };
   const earned = STICKERS.filter(st=>!store.stickers[st.id] && st.test(run, store));
@@ -1240,7 +1388,7 @@ function finish(){
   $('resStars').innerHTML = starsText(stars);
   $('resScore').innerHTML = `${starIcon} ${pointsWord(g.score)}`;
   $('resRecord').textContent = record && prev ? '🏆 Новий рекорд!' : '';
-  const avg = g.gaps.length ? g.gaps.reduce((s, x)=>s + x, 0) / g.gaps.length : 0;
+  const mean = list=>list.reduce((s, x)=>s + x, 0) / list.length;
   $('resList').innerHTML = [
     ['Рівень', `${g.L.ico} ${g.L.name}`],
     ['Спіймано подвійним клацанням', `${g.caught} з ${g.seen}`],
@@ -1248,8 +1396,10 @@ function finish(){
     ['Клацань по воді', g.water],
     ['Пірнули, поки не встиг', g.dived],
     ['Найдовша серія без промаху', g.streakMax],
-    g.gaps.length && ['Між двома клацаннями в середньому', sec(avg)],
-    g.junk && ['Виловлено несподіванок', `${g.junk} · усього ${store.junk}`],
+    g.gaps.length && ['Між двома клацаннями в середньому', sec(mean(g.gaps))],
+    g.junkSeen && ['Сміття перетягнуто в кошик', `${g.binned} з ${g.junkSeen} · усього ${store.junk}`],
+    g.junkSeen && ['Упущено повз кошик', g.drops],
+    g.carries.length && ['Перенесення в середньому', sec(mean(g.carries))],
     g.hints && ['Підказка з мишкою', `${g.hints} ${plural(g.hints, ['раз', 'рази', 'разів'])}`],
     ['У скарбничці', `★ ${store.total}`],
   ].filter(Boolean).map(([k, v])=>`<li><span>${k}</span><b>${v}</b></li>`).join('');
@@ -1281,8 +1431,22 @@ lake.addEventListener('pointerdown', e=>{
     if(c) popText('Лівою!', c, 'hint-pop');
     return;
   }
-  press(x, y, performance.now());
+  press(x, y, performance.now(), e.pointerId);
 });
+// Рух: тягнемо сміття; без нього над сміттям курсор-рука підказує, що його можна взяти
+const lakePoint = e=>{ const r = lake.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+lake.addEventListener('pointermove', e=>{
+  if(!G || G.paused || G.phase !== 'play') return;
+  const [x, y] = lakePoint(e);
+  if(G.drag){ if(e.pointerId === G.drag.id) dragTo(x, y); return; }
+  if(e.pointerType === 'mouse') lake.classList.toggle('grab', !!hitTest(x, y)?.type.junk);
+});
+const letGo = e=>{
+  if(!G || !G.drag || e.pointerId !== G.drag.id) return;
+  release(...lakePoint(e), performance.now(), e.type === 'pointercancel');
+};
+lake.addEventListener('pointerup', letGo);
+lake.addEventListener('pointercancel', letGo);
 // Під час гри не виділяється текст і не з'являється контекстне меню
 document.addEventListener('mousedown', e=>{ if(!$('game').hidden && !e.target.closest('[data-ui]')) e.preventDefault(); });
 document.addEventListener('contextmenu', e=>{ if(!$('game').hidden) e.preventDefault(); });
