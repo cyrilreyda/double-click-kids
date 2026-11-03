@@ -410,13 +410,13 @@ const BOOST = new URLSearchParams(location.search).has('boost');
 // up — скільки секунд мешканець над водою (на початку й наприкінці гри: гра поступово пришвидшується);
 // every — пауза між появами, с; max — скільки мешканців водночас над водою
 const LEVELS = BOOST ? {
-  easy:  { name:'Легко',    ico:'🟢', info:'середні мешканці', time:60,  dbl:550, size:[.21, 56, 84], up:[2.8, 2.3], every:1.2,  max:3 },
-  mid:   { name:'Середньо', ico:'🟡', info:'маленькі',         time:90,  dbl:430, size:[.17, 46, 66], up:[2.2, 1.8], every:.95,  max:3 },
-  hard:  { name:'Важко',    ico:'🔴', info:'крихітні й спритні', time:120, dbl:350, size:[.14, 40, 54], up:[1.8, 1.45], every:.75, max:4 },
+  easy:  { name:'Легко',    ico:'🟢', info:'середні мешканці', time:30,  dbl:550, size:[.21, 56, 84], up:[2.8, 2.3], every:1.2,  max:3 },
+  mid:   { name:'Середньо', ico:'🟡', info:'маленькі',         time:30,  dbl:430, size:[.17, 46, 66], up:[2.2, 1.8], every:.95,  max:3 },
+  hard:  { name:'Важко',    ico:'🔴', info:'крихітні й спритні', time:30,  dbl:350, size:[.14, 40, 54], up:[1.8, 1.45], every:.75, max:4 },
 } : {
-  easy:  { name:'Легко',    ico:'🟢', info:'великі мешканці',  time:60,  dbl:700, size:[.26, 72, 108], up:[3.8, 3.2], every:1.6,  max:2 },
-  mid:   { name:'Середньо', ico:'🟡', info:'середні',          time:90,  dbl:500, size:[.21, 58, 86],  up:[3.0, 2.5], every:1.3,  max:3 },
-  hard:  { name:'Важко',    ico:'🔴', info:'маленькі й спритні', time:120, dbl:380, size:[.17, 48, 68],  up:[2.4, 1.9], every:1.0,  max:3 },
+  easy:  { name:'Легко',    ico:'🟢', info:'великі мешканці',  time:30,  dbl:700, size:[.26, 72, 108], up:[3.8, 3.2], every:1.6,  max:2 },
+  mid:   { name:'Середньо', ico:'🟡', info:'середні',          time:30,  dbl:500, size:[.21, 58, 86],  up:[3.0, 2.5], every:1.3,  max:3 },
+  hard:  { name:'Важко',    ico:'🔴', info:'маленькі й спритні', time:30,  dbl:380, size:[.17, 48, 68],  up:[2.4, 1.9], every:1.0,  max:3 },
 };
 const WARN = .4;        // скільки секунд перед появою по воді розходяться кола
 const RISE = .25;       // виринає
@@ -424,49 +424,49 @@ const DIVE = .35;       // пірнає; поки пірнає, його ще м
 const HIT = .58;        // влучання: відстань від центру мешканця, частка його розміру (трохи більше за малюнок)
 const MOVE_TOL = 24;    // друге клацання може бути трохи збоку від першого, пікселів: рука в дітей тремтить
 const HINT_SINGLES = 3; // стільки разів поспіль одне клацання замість двох — і з'являється мишка-підказка
-const MISS_PER_MIN = 3; // третя зірка: промахів (одне клацання чи по воді) не більше стількох за хвилину гри
+const MISS_MAX = 3;     // третя зірка: промахів (одне клацання чи по воді) за гру не більше стількох
 
 // Мешканці озера: pts — бали; w — як часто з'являється серед відкритих (рідкісні — рідко);
 // at — скільки балів має бути в скарбничці, щоб мешканець почав з'являтися в озері
 const CRITTERS = [
   { id:'frog',   name:'Жабка',        pts:1,  w:3,   at:0 },
   { id:'fish',   name:'Рибка',        pts:1,  w:3,   at:0 },
-  { id:'cray',   name:'Рак',          pts:2,  w:2,   at:25 },
-  { id:'crab',   name:'Краб',         pts:2,  w:2,   at:90 },
-  { id:'turtle', name:'Черепаха',     pts:3,  w:1.5, at:200 },
-  { id:'octo',   name:'Восьминіг',    pts:5,  w:.45, at:360, rare:true },
-  { id:'gold',   name:'Золота рибка', pts:5,  w:.35, at:550, rare:true },
-  { id:'dino',   name:'Динозавр',     pts:10, w:.2,  at:800, rare:true },
+  { id:'cray',   name:'Рак',          pts:2,  w:2,   at:3 },
+  { id:'crab',   name:'Краб',         pts:2,  w:2,   at:10 },
+  { id:'turtle', name:'Черепаха',     pts:3,  w:1.5, at:18 },
+  { id:'octo',   name:'Восьминіг',    pts:5,  w:.45, at:28, rare:true },
+  { id:'gold',   name:'Золота рибка', pts:5,  w:.35, at:38, rare:true },
+  { id:'dino',   name:'Динозавр',     pts:10, w:.2,  at:50, rare:true },
 ];
 // Водойми: water і deep — вода згори й у глибині, shore — берег
 const PLACES = [
   { id:'pond',   name:'Ставок',       ico:'💧', at:0,   water:'#5CCBEB', deep:'#2D8FD0',
     shore:'#7ED6A2 radial-gradient(circle, #6BC992 3.5px, transparent 4px) 0 0/22px 22px' },
-  { id:'river',  name:'Річка',        ico:'🏞️', at:50,  water:'#62CFD9', deep:'#2484A8',
+  { id:'river',  name:'Річка',        ico:'🏞️', at:6,  water:'#62CFD9', deep:'#2484A8',
     shore:'#F3D9A4 radial-gradient(circle, #E2BE7C 3px, transparent 3.5px) 0 0/18px 18px' },
-  { id:'swamp',  name:'Болото',       ico:'🌿', at:140, water:'#7FA89A', deep:'#3E6658',
+  { id:'swamp',  name:'Болото',       ico:'🌿', at:14, water:'#7FA89A', deep:'#3E6658',
     shore:'#A9C77E radial-gradient(circle, #8DB062 4px, transparent 4.5px) 0 0/24px 24px' },
-  { id:'sea',    name:'Море',         ico:'🌊', at:280, water:'#34C4E4', deep:'#0B62A3',
+  { id:'sea',    name:'Море',         ico:'🌊', at:23, water:'#34C4E4', deep:'#0B62A3',
     shore:'#FCE6B0 radial-gradient(circle, #F0CF85 2.5px, transparent 3px) 0 0/16px 16px' },
-  { id:'winter', name:'Зимове озеро', ico:'❄️', at:450, water:'#A9DAF2', deep:'#5B93C2',
+  { id:'winter', name:'Зимове озеро', ico:'❄️', at:33, water:'#A9DAF2', deep:'#5B93C2',
     shore:'#E4F1FF radial-gradient(circle, #fff 4px, transparent 4.5px) 0 0/20px 20px' },
-  { id:'night',  name:'Нічне озеро',  ico:'🌙', at:650, water:'#3A5C9E', deep:'#16204A',
+  { id:'night',  name:'Нічне озеро',  ico:'🌙', at:44, water:'#3A5C9E', deep:'#16204A',
     shore:'#2B2D5A radial-gradient(circle, #FFD86B 2.5px, transparent 3px) 0 0/16px 24px' },
 ];
 // Наліпки за досягнення. r — підсумок гри, p — профіль гравця після гри
 const STICKERS = [
   { id:'first',  ico:'🐸', name:'Перший улов',      how:'Зіграти першу гру до кінця',                                   test:r=>true },
-  { id:'streak', ico:'🔥', name:'Без промаху',      how:'Спіймати 25 мешканців поспіль, жодного разу не схибивши',       test:r=>r.streakMax >= 25 },
+  { id:'streak', ico:'🔥', name:'Без промаху',      how:'Спіймати 15 мешканців поспіль, жодного разу не схибивши',       test:r=>r.streakMax >= 15 },
   { id:'sniper', ico:'🎯', name:'Влучне око',       how:'На «Середньо» чи «Важко» спіймати 80% мешканців і ні разу не клацнути по воді', test:r=>r.level !== 'easy' && r.water === 0 && r.share >= .8 },
   { id:'stars3', ico:'🌟', name:'Три зірки',        how:'Отримати 3 зірки на «Середньо» чи «Важко»',                     test:r=>r.stars === 3 && r.level !== 'easy' },
-  { id:'frogs',  ico:'🎵', name:'Жаб\'ячий хор',    how:'Спіймати 15 жабок за гру',                                      test:r=>r.got.frog >= 15 },
-  { id:'crabs',  ico:'🦀', name:'Крабова вечірка',  how:'Спіймати 10 крабів за гру',                                     test:r=>r.got.crab >= 10 },
-  { id:'octo',   ico:'🐙', name:'Вісім рук',        how:'Спіймати 3 восьминоги за гру',                                  test:r=>r.got.octo >= 3 },
+  { id:'frogs',  ico:'🎵', name:'Жаб\'ячий хор',    how:'Спіймати 7 жабок за гру',                                       test:r=>r.got.frog >= 7 },
+  { id:'crabs',  ico:'🦀', name:'Крабова вечірка',  how:'Спіймати 5 крабів за гру',                                      test:r=>r.got.crab >= 5 },
+  { id:'octo',   ico:'🐙', name:'Вісім рук',        how:'Спіймати 2 восьминоги за гру',                                  test:r=>r.got.octo >= 2 },
   { id:'gold',   ico:'👑', name:'Три бажання',      how:'Спіймати 2 золоті рибки за гру',                                test:r=>r.got.gold >= 2 },
   { id:'dino',   ico:'🦕', name:'Хто в озері?!',    how:'Спіймати динозавра',                                            test:r=>r.got.dino >= 1 },
   { id:'hard',   ico:'🔴', name:'Майстер клацання', how:'Отримати 2 зірки чи більше на рівні «Важко»',                   test:r=>r.level === 'hard' && r.stars >= 2 },
   { id:'games',  ico:'🏆', name:'Завсідник озера',  how:'Зіграти 25 ігор',                                               test:(r, p)=>p.games >= 25 },
-  { id:'bank',   ico:'💰', name:'Повна скарбничка', how:'Зібрати в скарбничку 1000 балів',                               test:(r, p)=>p.total >= 1000 },
+  { id:'bank',   ico:'💰', name:'Повна скарбничка', how:'Зібрати в скарбничку 300 балів',                                test:(r, p)=>p.total >= 300 },
 ];
 const STORE_KEY = BOOST ? 'double-click-kids-boost-v1' : 'double-click-kids-v1';
 
@@ -738,7 +738,7 @@ const critSVG = (id, v = 0)=>`<svg viewBox="0 0 64 64" aria-hidden="true">${[].c
 
 /* ================= Озеро: водойми й мешканці ================= */
 // Бали з усіх ігор складаються в скарбничку (store.total). За неї відкриваються нові водойми й нові мешканці:
-// at — скільки балів потрібно. Гра на «Легко» дає 20–35 балів, тож перші нагороди відкриваються вже за 1–2 гри
+// at — скільки балів потрібно. Гра на «Легко» дає 10–15 балів, тож нове відкривається майже після кожної гри
 const isOpen = (x, total = store.total)=>total >= x.at;
 const chosenPlace = ()=>{ const x = PLACES.find(x=>x.id === store.place); return x && isOpen(x) ? x : PLACES[0]; };
 const placeVars = p=>`--water:${p.water}; --deep:${p.deep}; --shore:${p.shore}`;
@@ -761,13 +761,12 @@ function showScreen(id){
 }
 
 function renderSetup(){
-  const minutes = s=>(s / 60).toLocaleString('uk', { maximumFractionDigits:1 }) + ' хв';
   $('levels').innerHTML = Object.entries(LEVELS).map(([id, L])=>{
     const b = store.best[id];
     return `<button class="level" data-level="${id}" title="Друге клацання — не пізніше ніж через ${sec(L.dbl)}">
       <span class="lv-ico">${L.ico}</span>
       <span class="lv-name">${L.name}</span>
-      <span class="lv-info">${L.info} · ${minutes(L.time)}</span>
+      <span class="lv-info">${L.info} · ${L.time} с</span>
       <span class="lv-best${b ? ' got' : ''}">${b ? `Рекорд: ${b.score} · ${'★'.repeat(b.stars) + '☆'.repeat(3 - b.stars)}` : 'Ще не грали'}</span>
     </button>`;
   }).join('');
@@ -1172,14 +1171,14 @@ function stopGame(){
 }
 
 // Кінець гри — час вийшов. Програти не можна: зірки показують, як вдалося.
-// Зірки: 1 — за всю гру; +1 — спіймано щонайменше 70% мешканців; +1 — промахів не більше MISS_PER_MIN за хвилину
+// Зірки: 1 — за всю гру; +1 — спіймано щонайменше 70% мешканців; +1 — промахів не більше MISS_MAX
 function finish(){
   G.phase = 'end';
   cancelAnimationFrame(G.raf);
   const g = G;
   const share = g.seen ? g.caught / g.seen : 0;
-  const misses = g.singles + g.water, allowed = Math.round(MISS_PER_MIN * g.L.time / 60);
-  const stars = 1 + (share >= .7 ? 1 : 0) + (g.caught > 0 && misses <= allowed ? 1 : 0);
+  const misses = g.singles + g.water;
+  const stars = 1 + (share >= .7 ? 1 : 0) + (g.caught > 0 && misses <= MISS_MAX ? 1 : 0);
   const prev = store.best[g.id];
   const record = !prev || g.score > prev.score || (g.score === prev.score && stars > prev.stars);
   if(record) store.best[g.id] = { score:g.score, stars };
