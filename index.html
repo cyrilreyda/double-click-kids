@@ -504,21 +504,22 @@ const PLACES = [
   { id:'night',  name:'Нічне озеро',  ico:'🌙', at:44, water:'#3A5C9E', deep:'#16204A',
     shore:'#2B2D5A radial-gradient(circle, #FFD86B 2.5px, transparent 3px) 0 0/16px 24px' },
 ];
-// Наліпки за досягнення. r — підсумок гри, p — профіль гравця після гри
+// Наліпки за досягнення. Одні — за одну гру: test(r), r — підсумок гри. Інші збираються за кілька ігор:
+// count(p) — скільки вже є в профілі гравця після гри, need — скільки треба
 const STICKERS = [
   { id:'first',  ico:'🐸', name:'Перший улов',      how:'Зіграти першу гру до кінця',                                   test:r=>true },
-  { id:'streak', ico:'🔥', name:'Без промаху',      how:'Спіймати 15 мешканців поспіль, жодного разу не схибивши',       test:r=>r.streakMax >= 15 },
-  { id:'sniper', ico:'🎯', name:'Влучне око',       how:'На «Середньо» чи «Важко» спіймати 80% мешканців і ні разу не клацнути по воді', test:r=>r.level !== 'easy' && r.water === 0 && r.share >= .8 },
-  { id:'stars3', ico:'🌟', name:'Три зірки',        how:'Отримати 3 зірки на «Середньо» чи «Важко»',                     test:r=>r.stars === 3 && r.level !== 'easy' },
-  { id:'frogs',  ico:'🎵', name:'Жаб\'ячий хор',    how:'Спіймати 7 жабок за гру',                                       test:r=>r.got.frog >= 7 },
-  { id:'crabs',  ico:'🦀', name:'Крабова вечірка',  how:'Спіймати 5 крабів за гру',                                      test:r=>r.got.crab >= 5 },
-  { id:'octo',   ico:'🐙', name:'Вісім рук',        how:'Спіймати 2 восьминоги за гру',                                  test:r=>r.got.octo >= 2 },
-  { id:'gold',   ico:'👑', name:'Три бажання',      how:'Спіймати 2 золоті рибки за гру',                                test:r=>r.got.gold >= 2 },
+  { id:'streak', ico:'🔥', name:'Без промаху',      how:'Спіймати 25 мешканців поспіль, жодного разу не схибивши',       test:r=>r.streakMax >= 25 },
+  { id:'sniper', ico:'🎯', name:'Влучне око',       how:'На «Важко» спіймати 90% мешканців і ні разу не клацнути по воді', test:r=>r.level === 'hard' && r.water === 0 && r.share >= .9 },
+  { id:'stars3', ico:'🌟', name:'Три зірки',        how:'Отримати 3 зірки в 10 іграх на «Середньо» чи «Важко»',          count:p=>p.stars3, need:10 },
+  { id:'frogs',  ico:'🎵', name:'Жаб\'ячий хор',    how:'Спіймати 50 жабок',                                             count:p=>p.caught.frog, need:50 },
+  { id:'crabs',  ico:'🦀', name:'Крабова вечірка',  how:'Спіймати 30 крабів',                                            count:p=>p.caught.crab, need:30 },
+  { id:'octo',   ico:'🐙', name:'Вісім рук',        how:'Спіймати 8 восьминогів',                                        count:p=>p.caught.octo, need:8 },
+  { id:'gold',   ico:'👑', name:'Три бажання',      how:'Спіймати 3 золоті рибки',                                       count:p=>p.caught.gold, need:3 },
   { id:'dino',   ico:'🦕', name:'Хто в озері?!',    how:'Спіймати динозавра',                                            test:r=>r.got.dino >= 1 },
-  { id:'hard',   ico:'🔴', name:'Майстер клацання', how:'Отримати 2 зірки чи більше на рівні «Важко»',                   test:r=>r.level === 'hard' && r.stars >= 2 },
-  { id:'clean',  ico:'♻️', name:'Чиста водойма',    how:'Перетягнути з води в кошик 20 речей',                           test:(r, p)=>p.junk >= 20,   count:p=>p.junk, need:20 },
-  { id:'games',  ico:'🏆', name:'Завсідник озера',  how:'Зіграти 25 ігор',                                               test:(r, p)=>p.games >= 25,  count:p=>p.games, need:25 },
-  { id:'bank',   ico:'💰', name:'Повна скарбничка', how:'Зібрати в скарбничку 300 балів',                                test:(r, p)=>p.total >= 300, count:p=>p.total, need:300 },
+  { id:'hard',   ico:'🔴', name:'Майстер клацання', how:'Отримати 3 зірки на рівні «Важко»',                             test:r=>r.level === 'hard' && r.stars === 3 },
+  { id:'clean',  ico:'♻️', name:'Чиста водойма',    how:'Перетягнути з води в кошик 40 речей',                           count:p=>p.junk, need:40 },
+  { id:'games',  ico:'🏆', name:'Завсідник озера',  how:'Зіграти 25 ігор',                                               count:p=>p.games, need:25 },
+  { id:'bank',   ico:'💰', name:'Повна скарбничка', how:'Зібрати в скарбничку 600 балів',                                count:p=>p.total, need:600 },
 ];
 // Наліпки з count збирають за кілька ігор: скільки вже є з need (лише для ще не отриманих)
 const stickerProgress = st=>st.count && !store.stickers[st.id] ? Math.min(st.count(store) || 0, st.need) : 0;
@@ -527,8 +528,9 @@ const STORE_KEY = BOOST ? 'double-click-kids-boost-v1' : 'double-click-kids-v1';
 /* ================= Збереження ================= */
 // Гравці на цьому пристрої: { current, players:{ ім'я: профіль } }. У кожного свої рекорди, скарбничка, водойма й наліпки.
 // Профіль: best — рекорди рівнів; total — скарбничка балів; games — зіграно ігор; junk — сміття в кошику за всі ігри;
+// caught — скільки спіймано кожного мешканця за всі ігри; stars3 — ігор з 3 зірками на «Середньо» чи «Важко»;
 // stickers — наліпки; place — обрана водойма
-const newProfile = ()=>({ best:{}, total:0, games:0, junk:0, stickers:{} });
+const newProfile = ()=>({ best:{}, total:0, games:0, junk:0, caught:{}, stars3:0, stickers:{} });
 let db = { current:null, players:{} };
 try{
   const s = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
@@ -1392,9 +1394,11 @@ function finish(){
   store.total += g.score;
   store.games = (store.games || 0) + 1;
   store.junk = (store.junk || 0) + g.binned;
+  for(const c of CRITTERS) store.caught[c.id] = (store.caught[c.id] || 0) + g.got[c.id];
+  if(stars === 3 && g.id !== 'easy') store.stars3++;
   const opened = allUnlocks().filter(u=>u.x.at > before && isOpen(u.x));
   const run = { stars, level:g.id, share, water:g.water, singles:g.singles, streakMax:g.streakMax, got:g.got };
-  const earned = STICKERS.filter(st=>!store.stickers[st.id] && st.test(run, store));
+  const earned = STICKERS.filter(st=>!store.stickers[st.id] && (st.test ? st.test(run) : st.count(store) >= st.need));
   earned.forEach(st=>store.stickers[st.id] = 1);
   save();
 
