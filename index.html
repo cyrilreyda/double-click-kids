@@ -438,6 +438,15 @@ const CRITTERS = [
   { id:'gold',   name:'Золота рибка', pts:5,  w:.35, at:38, rare:true },
   { id:'dino',   name:'Динозавр',     pts:10, w:.2,  at:50, rare:true },
 ];
+// Несподіванки: зрідка замість мешканця виринає річ, якій у воді не місце. Ловиться так само й дає бали,
+// але в списку мешканців її не видно — це сюрприз. SURPRISE — імовірність, що наступною виринає несподіванка
+const SURPRISES = [
+  { id:'can',   name:'Банка',    pts:2, surprise:true },
+  { id:'boot',  name:'Чобіт',    pts:2, surprise:true },
+  { id:'tire',  name:'Шина',     pts:3, surprise:true },
+  { id:'scope', name:'Перископ', pts:5, surprise:true },
+];
+const SURPRISE = .07;
 // Водойми: water і deep — вода згори й у глибині, shore — берег
 const PLACES = [
   { id:'pond',   name:'Ставок',       ico:'💧', at:0,   water:'#5CCBEB', deep:'#2D8FD0',
@@ -465,6 +474,7 @@ const STICKERS = [
   { id:'gold',   ico:'👑', name:'Три бажання',      how:'Спіймати 2 золоті рибки за гру',                                test:r=>r.got.gold >= 2 },
   { id:'dino',   ico:'🦕', name:'Хто в озері?!',    how:'Спіймати динозавра',                                            test:r=>r.got.dino >= 1 },
   { id:'hard',   ico:'🔴', name:'Майстер клацання', how:'Отримати 2 зірки чи більше на рівні «Важко»',                   test:r=>r.level === 'hard' && r.stars >= 2 },
+  { id:'clean',  ico:'♻️', name:'Чиста водойма',    how:'Виловити з води 10 несподіваних речей',                         test:(r, p)=>p.junk >= 10 },
   { id:'games',  ico:'🏆', name:'Завсідник озера',  how:'Зіграти 25 ігор',                                               test:(r, p)=>p.games >= 25 },
   { id:'bank',   ico:'💰', name:'Повна скарбничка', how:'Зібрати в скарбничку 300 балів',                                test:(r, p)=>p.total >= 300 },
 ];
@@ -472,8 +482,9 @@ const STORE_KEY = BOOST ? 'double-click-kids-boost-v1' : 'double-click-kids-v1';
 
 /* ================= Збереження ================= */
 // Гравці на цьому пристрої: { current, players:{ ім'я: профіль } }. У кожного свої рекорди, скарбничка, водойма й наліпки.
-// Профіль: best — рекорди рівнів; total — скарбничка балів; games — зіграно ігор; stickers — наліпки; place — обрана водойма
-const newProfile = ()=>({ best:{}, total:0, games:0, stickers:{} });
+// Профіль: best — рекорди рівнів; total — скарбничка балів; games — зіграно ігор; junk — виловлено несподіванок за всі ігри;
+// stickers — наліпки; place — обрана водойма
+const newProfile = ()=>({ best:{}, total:0, games:0, junk:0, stickers:{} });
 let db = { current:null, players:{} };
 try{
   const s = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
@@ -568,6 +579,8 @@ const SFX = {
   water:  ()=>noise(.16, .12, 0, 1800),
   dive:   ()=>bloop(420, 160, .18, .045),
   appear: ()=>sparkle(),                                                        // рідкісний мешканець виринув
+  surprise: ()=>{ bloop(260, 620, .16, .05); bloop(320, 760, .16, .04, .14); },  // виринула несподіванка
+  junk:   ()=>{ noise(.18, .25, 0, 1400); tone(1180, .05, 'square', .035, .02); tone(780, .09, 'square', .03, .08); },
   beep:   ()=>tone(440, .15, 'square', .05),
   go:     ()=>tone(880, .35, 'square', .05),
 };
@@ -732,6 +745,33 @@ const DRAW = {
     <circle cx="40" cy="14" r="4" fill="#fff" stroke="#1B1B3A" stroke-width="1.3"/><circle cx="41" cy="14.5" r="2" fill="#1B1B3A"/>
     <circle cx="51.5" cy="15" r="1.3" fill="#2A8A5C"/>
     <path d="M43 21q5 2.5 9-1" fill="none" stroke="#1B1B3A" stroke-width="2" stroke-linecap="round"/>`,
+  // Несподіванки
+  can:`<g transform="rotate(-14 32 40)">
+    <rect x="20" y="16" width="24" height="44" rx="3" fill="#C9CCD9" stroke="#6E6C8A" stroke-width="2.5"/>
+    <rect x="20" y="27" width="24" height="20" fill="#E8453C" stroke="#6E6C8A" stroke-width="2"/>
+    <path d="M27 37h10" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    <path d="M24 19v38" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".55"/>
+    <ellipse cx="32" cy="16" rx="12" ry="4" fill="#E4E6EE" stroke="#6E6C8A" stroke-width="2.5"/>
+    <ellipse cx="35" cy="15.5" rx="3" ry="1.4" fill="none" stroke="#6E6C8A" stroke-width="1.5"/></g>`,
+  boot:`<path d="M18 9h18v28q0 4 4 5l10 3q7 2 7 9v4H16v-5l2-5z" fill="#E8A23C" stroke="#9A6418" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="15" y="5" width="24" height="7" rx="2.5" fill="#C9822A" stroke="#9A6418" stroke-width="2.2"/>
+    <rect x="15" y="55" width="44" height="6" rx="2" fill="#6F4A1A"/>
+    <path d="M22 15v26" stroke="#FFD79A" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+    <path d="M45 26q2 4 0 6q-2-2 0-6zM53 34q2 4 0 6q-2-2 0-6z" fill="#7FD3EE" stroke="#2D8FD0" stroke-width="1.2"/>`,
+  tire:`<path fill-rule="evenodd" d="M7 39a25 21 0 1 0 50 0a25 21 0 1 0-50 0zM20 39a12 9.5 0 1 0 24 0a12 9.5 0 1 0-24 0z" fill="#4A4A6C" stroke="#1B1B3A" stroke-width="2.5"/>
+    <path d="${[...Array(16).keys()].map(i=>{
+      const a = i * Math.PI / 8, p = r=>`${(32 + r * Math.cos(a)).toFixed(1)} ${(39 + r * .84 * Math.sin(a)).toFixed(1)}`;
+      return `M${p(19)}L${p(23.5)}`;
+    }).join('')}" stroke="#7474A0" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="32" cy="39" rx="15" ry="12" fill="none" stroke="#6E6C8A" stroke-width="2"/>
+    <path d="M15 27q8-8 20-8" fill="none" stroke="#8E8EAE" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>`,
+  scope:`<rect x="29" y="18" width="11" height="48" fill="#FFC93C" stroke="#C99A1E" stroke-width="2.5"/>
+    <path d="M29 34h11M29 47h11" stroke="#C99A1E" stroke-width="2.5"/>
+    <circle cx="34.5" cy="40.5" r="1.4" fill="#C99A1E"/><circle cx="34.5" cy="53.5" r="1.4" fill="#C99A1E"/>
+    <path d="M15 9h22q5 0 5 5v10H29v-6H15z" fill="#FFC93C" stroke="#C99A1E" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="10" y="7.5" width="6" height="13" rx="2.5" fill="#2D9CDB" stroke="#1B5E9A" stroke-width="2"/>
+    <path d="M12.5 10.5v4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M33 12v6" stroke="#FFE27A" stroke-width="2.5" stroke-linecap="round"/>`,
 };
 // v — різновид жабки чи рибки; без нього — перший (для іконок і списку мешканців)
 const critSVG = (id, v = 0)=>`<svg viewBox="0 0 64 64" aria-hidden="true">${[].concat(DRAW[id])[v]}</svg>`;
@@ -922,7 +962,7 @@ function start(levelId){
   lastLevel = levelId;
   const L = LEVELS[levelId];
   G = { id:levelId, L, score:0, crits:[], recent:[], t:0, spawn:.5, seen:0, caught:0, singles:0, water:0, dived:0,
-        streak:0, streakMax:0, singleRun:0, hints:0, gaps:[], got:Object.fromEntries(CRITTERS.map(c=>[c.id, 0])),
+        streak:0, streakMax:0, singleRun:0, hints:0, gaps:[], junk:0, got:Object.fromEntries([...CRITTERS, ...SURPRISES].map(c=>[c.id, 0])),
         open:CRITTERS.filter(c=>isOpen(c)), phase:'count', paused:false, raf:0, last:0, timers:[] };
   lake.querySelectorAll('.critter, .pop, .splash').forEach(n=>n.remove());
   lake.style.setProperty('--dbl', L.dbl + 'ms');
@@ -984,6 +1024,7 @@ function step(dt, now){
       c.state = 'up';
       c.el.classList.remove('warn'); c.el.classList.add('up');
       if(c.rare) SFX.appear();
+      else if(c.type.surprise) SFX.surprise();
     }
     // Над водою вже досить — пірнає. Якщо учень щойно клацнув раз, чекаємо на друге клацання
     if(c.state === 'up' && G.t >= c.upUntil && !c.armed){ c.state = 'dive'; c.diveEnd = G.t + DIVE; c.el.classList.add('dive'); }
@@ -997,8 +1038,9 @@ function step(dt, now){
   G.crits = G.crits.filter(c=>c.state !== 'gone');
 }
 
-// Хто випливе: лише відкриті мешканці, рідкісні — рідко
+// Хто випливе: лише відкриті мешканці, рідкісні — рідко; зрідка — несподіванка
 function pickType(){
+  if(Math.random() < SURPRISE) return SURPRISES[Math.floor(Math.random() * SURPRISES.length)];
   let r = Math.random() * G.open.reduce((s, c)=>s + c.w, 0);
   for(const c of G.open){ r -= c.w; if(r < 0) return c; }
   return G.open[0];
@@ -1094,9 +1136,10 @@ function catchIt(c, gap, now){
   G.recent = G.recent.filter(r=>now < r.until);
   G.recent.push({ x:c.fx * W, y:c.fy * H, r:SZ * .75, until:now + G.L.dbl });
   bumpScore();
-  popText('+' + c.type.pts, c);
+  if(c.type.surprise) G.junk++;
+  popText(c.type.surprise ? `${c.type.name}! +${c.type.pts}` : '+' + c.type.pts, c);
   if(G.streak % 10 === 0) popText(`🔥 ${G.streak} поспіль!`, c, 'streak', 26);
-  (c.rare ? SFX.rare : SFX.catch)();
+  (c.rare ? SFX.rare : c.type.surprise ? SFX.junk : SFX.catch)();
 }
 function splash(x, y){
   const s = document.createElement('div');
@@ -1185,6 +1228,7 @@ function finish(){
   const before = store.total;
   store.total += g.score;
   store.games = (store.games || 0) + 1;
+  store.junk = (store.junk || 0) + g.junk;
   const opened = allUnlocks().filter(u=>u.x.at > before && isOpen(u.x));
   const run = { stars, level:g.id, share, water:g.water, singles:g.singles, streakMax:g.streakMax, got:g.got };
   const earned = STICKERS.filter(st=>!store.stickers[st.id] && st.test(run, store));
@@ -1205,6 +1249,7 @@ function finish(){
     ['Пірнули, поки не встиг', g.dived],
     ['Найдовша серія без промаху', g.streakMax],
     g.gaps.length && ['Між двома клацаннями в середньому', sec(avg)],
+    g.junk && ['Виловлено несподіванок', `${g.junk} · усього ${store.junk}`],
     g.hints && ['Підказка з мишкою', `${g.hints} ${plural(g.hints, ['раз', 'рази', 'разів'])}`],
     ['У скарбничці', `★ ${store.total}`],
   ].filter(Boolean).map(([k, v])=>`<li><span>${k}</span><b>${v}</b></li>`).join('');
