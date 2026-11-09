@@ -242,6 +242,9 @@
   .st-part{position:absolute; left:0; right:0; bottom:0; height:var(--fill); overflow:hidden; background:#FFE08A; border-top:2px solid #E0A800;}
   .st-part span{position:absolute; left:0; right:0; bottom:0; height:48px; display:flex; align-items:center; justify-content:center;}
   .sticker.no .st-ico .st-part, .sticker.no .st-ico .st-part span{filter:none; opacity:1;}
+  /* Зібрано все, що треба: замість сірого пунктиру — суцільне жовте коло, лінії зверху немає */
+  .sticker.no.full .st-ico{border:3px solid #FFC93C;}
+  .sticker.full .st-part{border-top:none;}
   .sticker small{font-size:11.5px; font-weight:700; color:#8A6200;}
 
   /* ---------- Гравці ---------- */
@@ -871,7 +874,7 @@ function renderSetup(){
 const stickerHTML = st=>{
   const n = stickerProgress(st);
   const part = n ? `<span class="st-part" style="--fill:${Math.round(n / st.need * 100)}%"><span>${st.ico}</span></span>` : '';
-  return `<span class="sticker${store.stickers[st.id] ? '' : ' no'}" data-st="${st.id}" title="${st.how}${n ? ` — уже ${n} з ${st.need}` : ''}">` +
+  return `<span class="sticker${store.stickers[st.id] ? '' : ' no'}${n >= st.need ? ' full' : ''}" data-st="${st.id}" title="${st.how}${n ? ` — уже ${n} з ${st.need}` : ''}">` +
     `<span class="st-ico"><span>${st.ico}</span>${part}</span>${st.name}${n ? `<small>${n} з ${st.need}</small>` : ''}</span>`;
 };
 // Клацання по наліпці підказує, за що її дають (на планшеті підказки при наведенні немає)
