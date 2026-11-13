@@ -442,8 +442,13 @@
 
 <script>
 /* ================= Налаштування ================= */
-// ?boost — складніші рівні для 5–7 класів: менші мешканці, коротше над водою, швидше подвійне клацання
-const BOOST = new URLSearchParams(location.search).has('boost');
+// ?boost — складніші рівні для 5–7 класів: менші мешканці, коротше над водою, швидше подвійне клацання.
+// У встановленій грі (PWA) адреси не видно, тож вчитель перемикає режим ще й Ctrl+Alt+B — це запам'ятовується на пристрої.
+// ?boost в адресі діє лише на цей запуск: один комп'ютер може відкривати гру різним класам різними посиланнями
+const BOOST_KEY = 'double-click-kids-boost';
+let boostSaved = false;
+try{ boostSaved = localStorage.getItem(BOOST_KEY) === 'on'; }catch(e){}
+const BOOST = boostSaved || new URLSearchParams(location.search).has('boost');
 
 // time — тривалість гри, с; dbl — за скільки мс треба клацнути вдруге, щоб вийшло подвійне клацання;
 // size — розмір мешканця: частка меншої сторони озера, але не менше min і не більше max пікселів;
@@ -1478,6 +1483,7 @@ document.addEventListener('contextmenu', e=>{ if(!$('game').hidden) e.preventDef
 
 document.addEventListener('keydown', e=>{
   if(e.ctrlKey && e.altKey && e.code === 'KeyZ'){ e.preventDefault(); setSound(!soundOn); return; }
+  if(e.ctrlKey && e.altKey && e.code === 'KeyB'){ e.preventDefault(); toggleBoost(); return; }
   if(e.code === 'Space' && !$('game').hidden && G){
     e.preventDefault();
     if(G.paused) resume(); else pause();
@@ -1527,6 +1533,25 @@ updateFsBtn();
     setSound(z === 'klas');
   }
 }
+// Ctrl+Alt+B: рівні для 5–7 класів увімкнути або вимкнути. Рекорди в режимах окремі, тож сторінка перезавантажується.
+// ?boost з адреси прибираємо, інакше він знову ввімкне режим
+function toggleBoost(){
+  try{
+    localStorage.setItem(BOOST_KEY, BOOST ? 'off' : 'on');
+    sessionStorage.setItem(BOOST_KEY + '-toast', '1');
+  }catch(e){ showToast('Не вдалося зберегти налаштування'); return; }
+  const q = new URLSearchParams(location.search);
+  q.delete('boost');
+  const rest = q.toString().replace(/=(?=&|$)/g, '');
+  history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash);
+  location.reload();
+}
+try{
+  if(sessionStorage.getItem(BOOST_KEY + '-toast')){
+    sessionStorage.removeItem(BOOST_KEY + '-toast');
+    showToast(BOOST ? 'Рівні для 5–7 класів' : 'Звичайні рівні');
+  }
+}catch(e){}
 updateTeacherNote();
 // Хто грав останнім на цьому комп'ютері — продовжує; інакше спершу питаємо ім'я
 if(db.current && db.players[db.current]) loadPlayer(db.current);
